@@ -130,7 +130,12 @@ void worker_thread(connection_manager* connection_manager,
   bool should_quit = false;
   while (!should_quit) {
     message_iterator iter(socket);
-    CHECK_EQ(0, iter.next().size());
+    try {
+      CHECK_EQ(0, iter.next().size());
+    } catch (...) {
+      // catching ZMQ errors is which are provoked
+      // by underlying ZMQ terminating (SIGINT).
+    }
     char command(interpret_message<char>(iter.next()));
     switch (command) {
       case kWorkerQuit:
@@ -159,7 +164,11 @@ void worker_thread(connection_manager* connection_manager,
         connection_manager::status status = connection_manager::status(
             interpret_message<uint64>(iter.next()));
         cb(status, iter);
+        break;
       }
+      default:
+        //std::cout << __PRETTY_FUNCTION__ << " unhandled command: " << (int) command << std::endl;
+	break;
     }
   }
   send_empty_message(&socket, ZMQ_SNDMORE);
